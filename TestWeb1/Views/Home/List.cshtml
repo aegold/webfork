@@ -7,63 +7,153 @@
 <h2>List</h2>
 
 <table id="productsTable" class="table">
-    <tr>
-        <th>
-            @Html.DisplayNameFor(model => model.Ten)
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.Mota)
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.Price)
-        </th>
-        <th></th>
-    </tr>
-    <tbody>
-
+    <thead>
+        <tr>
+            <th>Tên</th>
+            <th>Mô Tả</th>
+            <th>Giá</th>
+            <th>Ảnh</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="productsList">
     </tbody>
-@*@foreach (var item in Model) {
-    <tr>
-        <td>
-            @Html.DisplayFor(modelItem => item.Ten)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.Mota)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.Price)
-        </td>
-        <td>
-            @Html.ActionLink("Edit", "Edit", new { id=item.ID }) |
-            @Html.ActionLink("Details", "Details", new { id=item.ID }) |
-            @Html.ActionLink("Delete", "Delete", new { id=item.ID })
-        </td>
-    </tr>*@
-}
-
 </table>
 
-<script>
+
+<!-- Edit, dùng Modal bootstrap -->
+<div class="modal fade" id="editProductModal" tabindex="-1" role="dialog" aria-labelledby="editProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProductModalLabel">Chỉnh sửa sản phẩm</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editProductForm">
+                    <input type="hidden" id="editProductID" name="ID" />
+                    <div class="form-group">
+                        <label for="editTen">Tên sản phẩm:</label>
+                        <input type="text" class="form-group" id="editTen" name="Ten" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="editMoTa">Mô tả:</label>
+                        <input type="text" class="form-group" id="editMoTa" name="Ten" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="editPrice">Price:</label>
+                        <input type="number" class="form-group" id="editPrice" name="Price" required />
+                    </div>
+                    <button type="submit">Lưu thay đổi</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
     $(document).ready(function () {
-        $.ajax({
-            url: '@Url.Action("GetList", "Home")',
-            type: "GET",
-            dataType: "json",
-            success: function (data) {
-                var tableBody = $('#productsTable tbody');
-                tableBody.empty(); // Xóa nội dung cũ
-                $.each(data, function (index, emp) {
-                    var row = '<tr>' +
-                        '<td>' + emp.Ten + '</td>' +
-                        '<td>' + emp.Mota + '</td>' +
-                        '<td>' + emp.Price + '</td>' +
-                        '</tr>';
-                    tableBody.append(row);
-                });
-            },
-            error: function (errormessage) {
-                alert(errormessage.responseText);
-            }
+        function loadData() {
+            $.ajax({
+                url: '@Url.Action("GetList", "Home")',
+                type: 'POST',
+                dataType: 'json',
+                success: function (data) {
+                    console.log('thanh cong');
+                    var tableBody = $('#productsTable tbody');
+                    tableBody.empty(); // Xóa nội dung cũ
+                    $.each(data, function (index, value) {
+                        var row = '<tr data-id="' + value.ID + '">' +
+                            '<td>' + value.Ten + '</td>' +
+                            '<td>' + value.Mota + '</td>' +
+                            '<td>' + value.Price + '</td>' +
+                            '<td>' + '<img src="'+value.ImagePath+'" alt="'+value.Ten+'" width="100" />' + '</td>' +
+                            '<td>' + '<button id="editBtn" class="btn btn-primary " data-bs-toggle="modal" data-bs-target="#editProductModal">Edit</button>' + " " +
+                            '<button id="delBtn" class="btn btn-danger">Delete</button>' + '</td>' +
+                            '</tr>';
+                        tableBody.append(row);
+                    });
+                },
+                error: function (errormessage) {
+                    alert(errormessage.responseText);
+                }
+            });
+        }
+        loadData();
+
+        //EDIT
+        $(document).on('click', '#editBtn', function () {
+            var productID = $(this).closest('tr').data('id');
+            $.ajax({
+                url: '@Url.Action("GetProductById", "Home")',
+                type: 'GET',
+                data: { id: productID },
+                success: function (response) {
+                    if (response.success) {
+                        $('#editProductID').val(response.product.ID);
+                        $('#editTen').val(response.product.Ten);
+                        $('#editMoTa').val(response.product.Mota);
+                        $('#editPrice').val(response.product.Price);
+                        $('#editProductModal').modal('show');// Hiển thị form chỉnh sửa
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
         });
-    })
+
+        //SAU KHI SUBMIT EDIT
+        $('#editProductForm').submit(function (event) {
+            event.preventDefault();
+            $.ajax({
+                url: '@Url.Action("EditProduct", "Home")',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    sp: {
+                        ID: $('#editProductID').val(),
+                        Ten: $('#editTen').val(),
+                        Mota: $('#editMoTa').val(),
+                        Price: $('#editPrice').val()
+                    }
+                }),
+                async: true,
+                processData: false,
+                cache: false,
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $('#editProductModal').modal('hide');  // Đóng modal bằng Bootstrap
+                        loadData();  // Tải lại danh sách sản phẩm
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        });
+
+        //DELETE
+        $(document).on('click', '#delBtn', function () {
+        var productId = $(this).closest('tr').data('id'); 
+        if (confirm("Xoá sản phẩm")) {
+            $.ajax({
+                url: '@Url.Action("Delete", "Home")',
+                type: 'POST',
+                data: { id: productId },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        loadData();  // Tải lại danh sách sản phẩm sau khi xóa
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        }
+    });
+    });
 </script>
+

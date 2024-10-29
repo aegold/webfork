@@ -82,6 +82,8 @@ namespace TestWeb1.Models
 		
 		private System.Nullable<int> _Price;
 		
+		private string _ImagePath;
+		
     #region Extensibility Method Definitions
     partial void OnLoaded();
     partial void OnValidate(System.Data.Linq.ChangeAction action);
@@ -94,6 +96,8 @@ namespace TestWeb1.Models
     partial void OnMotaChanged();
     partial void OnPriceChanging(System.Nullable<int> value);
     partial void OnPriceChanged();
+    partial void OnImagePathChanging(string value);
+    partial void OnImagePathChanged();
     #endregion
 		
 		public SanPham()
@@ -177,6 +181,26 @@ namespace TestWeb1.Models
 					this._Price = value;
 					this.SendPropertyChanged("Price");
 					this.OnPriceChanged();
+				}
+			}
+		}
+		
+		[global::System.Data.Linq.Mapping.ColumnAttribute(Storage="_ImagePath", DbType="VarChar(255)")]
+		public string ImagePath
+		{
+			get
+			{
+				return this._ImagePath;
+			}
+			set
+			{
+				if ((this._ImagePath != value))
+				{
+					this.OnImagePathChanging(value);
+					this.SendPropertyChanging();
+					this._ImagePath = value;
+					this.SendPropertyChanged("ImagePath");
+					this.OnImagePathChanged();
 				}
 			}
 		}
