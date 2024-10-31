@@ -6,6 +6,10 @@
 
 <h2>List</h2>
 
+@Html.TextBox("Search", "", new { placeholder = "Nhập tên sản phẩm" })
+<input type="submit" id="searchBtn" value="Tìm">
+<br />
+
 <table id="productsTable" class="table">
     <thead>
         <tr>
@@ -19,6 +23,16 @@
     <tbody id="productsList">
     </tbody>
 </table>
+
+
+<nav>
+    <ul class="pagination">
+        <li id="prevPage" class="page-item"><a class="page-link" href="#">Previous</a></li>
+        <li id="currentPage" class="page-item"><a class="page-link" href="#"></a></li>
+        <li id="lastPage" class="page-item"><a class="page-link" href="#"></a></li>
+        <li id="nextPage" class="page-item"><a class="page-link" href="#">Next</a></li>
+    </ul>
+</nav>
 
 
 <!-- Edit, dùng Modal bootstrap -->
@@ -36,17 +50,22 @@
                     <input type="hidden" id="editProductID" name="ID" />
                     <div class="form-group">
                         <label for="editTen">Tên sản phẩm:</label>
-                        <input type="text" class="form-group" id="editTen" name="Ten" required />
+                        <input type="text" class="form-group" id="editTen" name="editTen" required />
                     </div>
                     <div class="form-group">
                         <label for="editMoTa">Mô tả:</label>
-                        <input type="text" class="form-group" id="editMoTa" name="Ten" required />
+                        <input type="text" class="form-group" id="editMoTa" name="editMoTa" required />
                     </div>
                     <div class="form-group">
                         <label for="editPrice">Price:</label>
-                        <input type="number" class="form-group" id="editPrice" name="Price" required />
+                        <input type="number" class="form-group" id="editPrice" name="editPrice" required />
                     </div>
-                    <button type="submit">Lưu thay đổi</button>
+                    <div class="form-group">
+                        <label for="Image">Ảnh sản phẩm:</label>
+                        <input type="file" class="form-control-file" name="Image" id="editImageFile" />
+                    </div>
+                    <img id="previewImage" src="#" alt="Preview Image" style="max-width: 100px; margin-top: 10px; margin-bottom:10px" />
+                    <button type="submit" id="editSubmit">Lưu thay đổi</button>
                 </form>
             </div>
         </div>
@@ -55,26 +74,37 @@
 
 <script type="text/javascript">
     $(document).ready(function () {
+        var pageNumber = 1;
+        var pageSize = 8;
+
         function loadData() {
             $.ajax({
                 url: '@Url.Action("GetList", "Home")',
                 type: 'POST',
+                data: { pageNumber: pageNumber, pageSize: pageSize },
                 dataType: 'json',
                 success: function (data) {
-                    console.log('thanh cong');
                     var tableBody = $('#productsTable tbody');
-                    tableBody.empty(); // Xóa nội dung cũ
-                    $.each(data, function (index, value) {
+                    tableBody.empty();
+                    $.each(data.list, function (index, value) {
                         var row = '<tr data-id="' + value.ID + '">' +
                             '<td>' + value.Ten + '</td>' +
                             '<td>' + value.Mota + '</td>' +
                             '<td>' + value.Price + '</td>' +
-                            '<td>' + '<img src="'+value.ImagePath+'" alt="'+value.Ten+'" width="100" />' + '</td>' +
+                            '<td>' + '<img src="' + value.ImagePath + '" alt="' + value.Ten + '" width="100" />' + '</td>' +
                             '<td>' + '<button id="editBtn" class="btn btn-primary " data-bs-toggle="modal" data-bs-target="#editProductModal">Edit</button>' + " " +
                             '<button id="delBtn" class="btn btn-danger">Delete</button>' + '</td>' +
                             '</tr>';
                         tableBody.append(row);
                     });
+                    var tongSoTrang = Math.ceil(data.tongSoSP / pageSize); // làm tròn lên
+
+                    console.log(data.tongSoSP + " " + tongSoTrang);
+
+                    $('#currentPage .page-link').text(pageNumber);
+                    $('#lastPage .page-link').text(tongSoTrang);
+
+                    updateTrang(tongSoTrang);  
                 },
                 error: function (errormessage) {
                     alert(errormessage.responseText);
@@ -82,6 +112,68 @@
             });
         }
         loadData();
+
+        function updateTrang(totalPages) {
+            if (pageNumber === 1) {
+                $('#prevPage').addClass('disabled');
+            } else {
+                $('#prevPage').removeClass('disabled');
+            }
+
+            if (pageNumber === totalPages) {
+                $('#nextPage').addClass('disabled');
+            } else {
+                $('#nextPage').removeClass('disabled');
+            }
+        };
+
+        $('#prevPage').click(function () {
+            if (pageNumber > 1) {
+                pageNumber--;
+                loadData();
+            }
+        });
+
+        $('#nextPage').click(function () {
+            pageNumber++;
+            loadData();
+        });
+
+        //TIM KIEM SAN PHAM
+        $('#searchBtn').click(function () {
+            event.preventDefault();
+            var searchVal = $('#Search').val();
+            $.ajax({
+                url: '@Url.Action("SearchProductsByName", "Home")',
+                type: 'GET',
+                dataType: 'json',
+                data: { name: searchVal },
+                success: function (data) {
+                    //console.log(data);
+                    if (data.length == 0) {
+                        alert("Khong co ban ghi");
+                        loadData();
+                    } else {
+                        var tableBody = $('#productsTable tbody');
+                        tableBody.empty(); // Xóa nội dung cũ
+                        $.each(data, function (index, value) {
+                            var row = '<tr data-id="' + value.ID + '">' +
+                                '<td>' + value.Ten + '</td>' +
+                                '<td>' + value.Mota + '</td>' +
+                                '<td>' + value.Price + '</td>' +
+                                '<td>' + '<img src="' + value.ImagePath + '" alt="' + value.Ten + '" width="100" />' + '</td>' +
+                                '<td>' + '<button id="editBtn" class="btn btn-primary " data-bs-toggle="modal" data-bs-target="#editProductModal">Edit</button>' + " " +
+                                '<button id="delBtn" class="btn btn-danger">Delete</button>' + '</td>' +
+                                '</tr>';
+                            tableBody.append(row);
+                        });
+                    }
+                },
+                error: function (error) {
+                    console.log("Đã xảy ra lỗi", error);
+                }
+            });
+        });
 
         //EDIT
         $(document).on('click', '#editBtn', function () {
@@ -96,6 +188,7 @@
                         $('#editTen').val(response.product.Ten);
                         $('#editMoTa').val(response.product.Mota);
                         $('#editPrice').val(response.product.Price);
+                        $('#previewImage').attr("src", response.product.ImagePath)
                         $('#editProductModal').modal('show');// Hiển thị form chỉnh sửa
                     } else {
                         alert(response.message);
@@ -104,24 +197,38 @@
             });
         });
 
+        //UPDATE IMAGE PREVIEW
+        $('#editImageFile').change(function () {
+            var file = this.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    $('#previewImage').attr('src', e.target.result);
+                    $('#previewImage').show();
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
         //SAU KHI SUBMIT EDIT
         $('#editProductForm').submit(function (event) {
             event.preventDefault();
+            var formData = new FormData();
+            formData.append("ID", $('#editProductID').val());
+            formData.append("Ten", $('#editTen').val());
+            formData.append("MoTa", $('#editMoTa').val());
+            formData.append("Price", $('#editPrice').val());
+            var imageFile = $('#editImageFile')[0].files[0];
+            if (imageFile) {
+                formData.append('imageFile', imageFile);
+            }
             $.ajax({
                 url: '@Url.Action("EditProduct", "Home")',
                 type: 'POST',
                 dataType: 'json',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    sp: {
-                        ID: $('#editProductID').val(),
-                        Ten: $('#editTen').val(),
-                        Mota: $('#editMoTa').val(),
-                        Price: $('#editPrice').val()
-                    }
-                }),
-                async: true,
+                data: formData,
                 processData: false,
+                contentType: false,
                 cache: false,
                 success: function (response) {
                     if (response.success) {
@@ -137,23 +244,23 @@
 
         //DELETE
         $(document).on('click', '#delBtn', function () {
-        var productId = $(this).closest('tr').data('id'); 
-        if (confirm("Xoá sản phẩm")) {
-            $.ajax({
-                url: '@Url.Action("Delete", "Home")',
-                type: 'POST',
-                data: { id: productId },
-                success: function (response) {
-                    if (response.success) {
-                        alert(response.message);
-                        loadData();  // Tải lại danh sách sản phẩm sau khi xóa
-                    } else {
-                        alert(response.message);
+        var productId = $(this).closest('tr').data('id');
+            if (confirm("Xoá sản phẩm")) {
+                $.ajax({
+                    url: '@Url.Action("Delete", "Home")',
+                    type: 'POST',
+                    data: { id: productId },
+                    success: function (response) {
+                        if (response.success) {
+                            alert(response.message);
+                            loadData();  // Tải lại danh sách sản phẩm sau khi xóa
+                        } else {
+                            alert(response.message);
+                        }
                     }
-                }
-            });
-        }
-    });
+                });
+            }
+        });
     });
 </script>
 

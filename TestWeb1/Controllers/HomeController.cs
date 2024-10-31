@@ -26,10 +26,17 @@ namespace TestWeb1.Controllers
             return View();
         }
         [HttpPost]
-        public JsonResult GetList()
+        public JsonResult GetList(int pageNumber,int pageSize)
         {
-            var list = _context.SanPhams.ToList();
-            return Json(list,JsonRequestBehavior.AllowGet);
+            Debug.WriteLine(pageNumber +" " + pageSize);
+            var list = _context.SanPhams
+                             .OrderBy(sp => sp.Ten)
+                             .Skip((pageNumber - 1) * pageSize)
+                             .Take(pageSize)
+                             .ToList();
+
+            var tongSoSP = _context.SanPhams.Count();
+            return Json(new {list,tongSoSP },JsonRequestBehavior.AllowGet);
         }
 
         public ActionResult Create()
@@ -88,16 +95,29 @@ namespace TestWeb1.Controllers
         }
 
         [HttpPost]
-        public JsonResult EditProduct(SanPham sp)
+        public JsonResult EditProduct()
         {
             try
             {
-                var productObj = _context.SanPhams.FirstOrDefault(product => product.ID == sp.ID);
+                var id = Request.Form["ID"];
+                Debug.WriteLine(id);
+                var productObj = _context.SanPhams.FirstOrDefault(product => product.ID == id);
                 //Debug.WriteLine(productObj.ID + "/" + sp.Ten + "/" + sp.Mota + "/" + sp.Price);
 
-                productObj.Ten = sp.Ten;
-                productObj.Mota = sp.Mota;
-                productObj.Price = sp.Price;
+                productObj.Ten = Request.Form["Ten"];
+                productObj.Mota = Request.Form["MoTa"];
+                productObj.Price = Convert.ToInt32(Request.Form["Price"]);
+                var imageFile = Request.Files["imageFile"];
+
+                if (imageFile != null && imageFile.ContentLength > 0)
+                {
+                    Debug.WriteLine("Image Recieved");
+                    var fileName = Path.GetFileName(imageFile.FileName);
+                    var filePath = Path.Combine(Server.MapPath("~/Images"), fileName);
+
+                    imageFile.SaveAs(filePath);
+                    productObj.ImagePath = "/Images/" + fileName;
+                }
 
                 _context.SubmitChanges();
                 return Json(new { success = true,message = "Cập nhật thành công" }, JsonRequestBehavior.AllowGet);
@@ -120,6 +140,25 @@ namespace TestWeb1.Controllers
             catch (Exception e)
             {
                 return Json(new { success = false, message = e.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+        
+        public JsonResult SearchProductsByName(string name)
+        {
+            {
+                     var productList = _context.SanPhams
+                    .Where(sp => sp.Ten.Contains(name)) // Tìm kiếm theo tên sản phẩm
+                    .Select(sp => new
+                    {
+                        sp.ID,
+                        sp.Ten,
+                        sp.Mota,
+                        sp.Price,
+                        ImagePath = Url.Content(sp.ImagePath) // Đảm bảo đường dẫn ảnh hợp lệ
+                    })
+                    .ToList();
+                    Debug.WriteLine(productList);
+                return Json(productList, JsonRequestBehavior.AllowGet);
             }
         }
     }
